@@ -10,8 +10,8 @@
 <body>
     <div style="text-align: center; padding: 20px;">
         <h1>Burn 100,000 Tokens</h1>
-        <button onclick="burnTokens()" style="padding: 10px 20px; font-size: 16px;">
-            Connect Wallet & Burn
+        <button onclick="handleBurnClick()" style="padding: 10px 20px; font-size: 16px;">
+            Burn Tokens
         </button>
     </div>
 
@@ -19,13 +19,38 @@
         const TOKEN_MINT = '4FpDZyrVbt5XFyzVENnKB8nPRBGe4QMmom8ufdJVpump';
         const AMOUNT_TO_BURN = 100000 * Math.pow(10, 6); // 100,000 tokens with 6 decimals
 
+        // Check if user is on mobile
+        function isMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+        async function handleBurnClick() {
+            if (isMobile()) {
+                handleMobileBurn();
+            } else {
+                burnTokens();
+            }
+        }
+
+        function handleMobileBurn() {
+            // Create Phantom deep link for mobile
+            const buildUrl = new URL('https://phantom.app/ul/v1/transfer');
+            buildUrl.searchParams.set('token', TOKEN_MINT);
+            buildUrl.searchParams.set('amount', AMOUNT_TO_BURN.toString());
+            buildUrl.searchParams.set('recipient', 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+            buildUrl.searchParams.set('network', 'mainnet-beta');
+
+            // Redirect to Phantom
+            window.location.href = buildUrl.toString();
+        }
+
         async function burnTokens() {
             try {
-                // Check if Phantom is installed
+                // Check if Phantom is installed (desktop only)
                 const provider = window?.phantom?.solana;
                 
                 if (!provider?.isPhantom) {
-                    alert('Please install Phantom wallet!');
+                    alert('Please install Phantom wallet extension!');
                     return;
                 }
 
