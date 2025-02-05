@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Burn Tokens</title>
+    <!-- Load libraries -->
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
-    <script src="https://unpkg.com/@solana/spl-token@0.3.8/lib/index.iife.js"></script>
+    <script src="https://unpkg.com/@solana/spl-token@0.3.8/lib/index.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bs58@5.0.0/dist/index.min.js"></script>
 </head>
 <body>
@@ -20,6 +21,7 @@
     <script>
         const TOKEN_MINT = '4FpDZyrVbt5XFyzVENnKB8nPRBGe4QMmom8ufdJVpump';
         const AMOUNT_TO_BURN = 100000 * Math.pow(10, 6); // 100,000 tokens with 6 decimals
+        const TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
 
         function updateStatus(message) {
             document.getElementById('status').innerText = message;
@@ -39,20 +41,24 @@
                 // Create a dummy keypair for transaction building
                 const dummyKey = solanaWeb3.Keypair.generate();
 
-                // Get the token account address using the correct method access
-                const tokenAccount = await splToken.getAssociatedTokenAddress(
+                // Get the token account address
+                const tokenAccount = await SplToken.getAssociatedTokenAddress(
                     new solanaWeb3.PublicKey(TOKEN_MINT),
-                    dummyKey.publicKey
+                    dummyKey.publicKey,
+                    false,
+                    new solanaWeb3.PublicKey(TOKEN_PROGRAM_ID)
                 );
 
                 updateStatus('Creating burn instruction...');
 
-                // Create burn instruction using the correct method access
-                const burnInstruction = splToken.createBurnInstruction(
+                // Create burn instruction
+                const burnInstruction = SplToken.createBurnInstruction(
                     tokenAccount,
                     new solanaWeb3.PublicKey(TOKEN_MINT),
                     dummyKey.publicKey,
-                    AMOUNT_TO_BURN
+                    AMOUNT_TO_BURN,
+                    [],
+                    new solanaWeb3.PublicKey(TOKEN_PROGRAM_ID)
                 );
 
                 // Create transaction and add the burn instruction
