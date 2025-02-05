@@ -1,0 +1,85 @@
+// index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Burn Tokens</title>
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <script src="https://unpkg.com/@solana/spl-token@latest/lib/index.iife.min.js"></script>
+</head>
+<body>
+    <div style="text-align: center; padding: 20px;">
+        <h1>Burn 100,000 Tokens</h1>
+        <button onclick="burnTokens()" style="padding: 10px 20px; font-size: 16px;">
+            Connect Wallet & Burn
+        </button>
+    </div>
+
+    <script>
+        const TOKEN_MINT = '4FpDZyrVbt5XFyzVENnKB8nPRBGe4QMmom8ufdJVpump';
+        const AMOUNT_TO_BURN = 100000 * Math.pow(10, 6); // 100,000 tokens with 6 decimals
+
+        async function burnTokens() {
+            try {
+                // Check if Phantom is installed
+                const provider = window?.phantom?.solana;
+                
+                if (!provider?.isPhantom) {
+                    alert('Please install Phantom wallet!');
+                    return;
+                }
+
+                // Connect to wallet
+                await provider.connect();
+                const connection = new solanaWeb3.Connection(
+                    solanaWeb3.clusterApiUrl('mainnet-beta'),
+                    'confirmed'
+                );
+
+                // Get wallet public key
+                const walletPubKey = provider.publicKey;
+                
+                // Get token account
+                const tokenAccount = await splToken.getAssociatedTokenAddress(
+                    new solanaWeb3.PublicKey(TOKEN_MINT),
+                    walletPubKey
+                );
+
+                // Create burn instruction
+                const burnInstruction = splToken.createBurnInstruction(
+                    tokenAccount,
+                    new solanaWeb3.PublicKey(TOKEN_MINT),
+                    walletPubKey,
+                    AMOUNT_TO_BURN
+                );
+
+                // Create transaction
+                const transaction = new solanaWeb3.Transaction().add(burnInstruction);
+                
+                // Get recent blockhash
+                const { blockhash } = await connection.getLatestBlockhash();
+                transaction.recentBlockhash = blockhash;
+                transaction.feePayer = walletPubKey;
+
+                // Sign and send transaction
+                const signed = await provider.signTransaction(transaction);
+                const signature = await connection.sendRawTransaction(signed.serialize());
+                
+                // Confirm transaction
+                const confirmation = await connection.confirmTransaction(signature);
+                
+                if (confirmation.value.err) {
+                    throw new Error('Transaction failed!');
+                }
+
+                alert('Successfully burned 100,000 tokens!');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
