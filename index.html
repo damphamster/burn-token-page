@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Burn Tokens</title>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
-    <script src="https://unpkg.com/@solana/spl-token@0.3.8/lib/index.iife.min.js"></script>
+    <script src="https://unpkg.com/@solana/spl-token@0.3.8/lib/index.iife.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bs58@5.0.0/dist/index.min.js"></script>
 </head>
 <body>
@@ -28,6 +28,8 @@
 
         async function handleBurnClick() {
             try {
+                updateStatus('Creating transaction...');
+                
                 // Connect to Solana
                 const connection = new solanaWeb3.Connection(
                     solanaWeb3.clusterApiUrl('mainnet-beta'),
@@ -35,17 +37,18 @@
                 );
 
                 // Create a dummy keypair for transaction building
-                // The actual signing will happen in Phantom
                 const dummyKey = solanaWeb3.Keypair.generate();
 
-                // Get the token account address
-                const tokenAccount = await window.SplToken.getAssociatedTokenAddress(
+                // Get the token account address using the correct method access
+                const tokenAccount = await splToken.getAssociatedTokenAddress(
                     new solanaWeb3.PublicKey(TOKEN_MINT),
                     dummyKey.publicKey
                 );
 
-                // Create burn instruction
-                const burnInstruction = window.SplToken.createBurnInstruction(
+                updateStatus('Creating burn instruction...');
+
+                // Create burn instruction using the correct method access
+                const burnInstruction = splToken.createBurnInstruction(
                     tokenAccount,
                     new solanaWeb3.PublicKey(TOKEN_MINT),
                     dummyKey.publicKey,
@@ -54,6 +57,8 @@
 
                 // Create transaction and add the burn instruction
                 const transaction = new solanaWeb3.Transaction().add(burnInstruction);
+                
+                updateStatus('Getting recent blockhash...');
                 
                 // Get recent blockhash
                 const { blockhash } = await connection.getLatestBlockhash('finalized');
@@ -64,6 +69,8 @@
                 const serializedTransaction = transaction.serialize({
                     requireAllSignatures: false
                 }).toString('base64');
+
+                updateStatus('Creating Phantom URL...');
 
                 // Create Phantom transaction request URL
                 const phantomURL = `https://phantom.app/ul/v1/request-transaction` +
