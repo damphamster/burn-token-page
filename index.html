@@ -33,15 +33,16 @@
         }
 
         function handleMobileBurn() {
-            // Create Phantom deep link for mobile
-            const buildUrl = new URL('https://phantom.app/ul/v1/transfer');
-            buildUrl.searchParams.set('token', TOKEN_MINT);
-            buildUrl.searchParams.set('amount', AMOUNT_TO_BURN.toString());
-            buildUrl.searchParams.set('recipient', 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
-            buildUrl.searchParams.set('network', 'mainnet-beta');
+            // Use phantom:// protocol for deep linking
+            const phantomUrl = `phantom://v1/transfer?` + 
+                `token=${TOKEN_MINT}` +
+                `&amount=${AMOUNT_TO_BURN.toString()}` +
+                `&recipient=TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA` +
+                `&network=mainnet-beta` +
+                `&message=Burn 100,000 tokens`;
 
             // Redirect to Phantom
-            window.location.href = buildUrl.toString();
+            window.location.href = phantomUrl;
         }
 
         async function burnTokens() {
