@@ -6,12 +6,13 @@
     <title>Burn Tokens</title>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
     <script src="https://unpkg.com/@solana/spl-token@0.3.8/lib/index.iife.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bs58@5.0.0/dist/index.min.js"></script>
 </head>
 <body>
     <div style="text-align: center; padding: 20px;">
         <h1>Burn 100,000 Tokens</h1>
         <button onclick="handleBurnClick()" style="padding: 10px 20px; font-size: 16px;">
-            Burn Tokens
+            Create Burn Transaction
         </button>
         <p id="status" style="margin-top: 20px;"></p>
     </div>
@@ -22,28 +23,65 @@
 
         function updateStatus(message) {
             document.getElementById('status').innerText = message;
-            console.log(message);  // Also log to console for debugging
+            console.log(message);
         }
 
-        function handleBurnClick() {
-            updateStatus('Initiating burn transaction...');
-            
-            // Construct Phantom mobile URL
-            const phantomURL = `https://phantom.app/ul/v1/transfer` +
-                `?recipient=TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA` +
-                `&splToken=${TOKEN_MINT}` +
-                `&amount=${AMOUNT_TO_BURN}` +
-                `&network=mainnet-beta` +
-                `&reference=${Date.now()}`; // Add timestamp as reference to prevent caching
+        async function handleBurnClick() {
+            try {
+                // Connect to Solana
+                const connection = new solanaWeb3.Connection(
+                    solanaWeb3.clusterApiUrl('mainnet-beta'),
+                    'confirmed'
+                );
 
-            updateStatus('Opening Phantom wallet...');
-            console.log('Attempting to open:', phantomURL);
+                // Create a dummy keypair for transaction building
+                // The actual signing will happen in Phantom
+                const dummyKey = solanaWeb3.Keypair.generate();
 
-            // For debugging - show the URL we're trying to open
-            updateStatus('Opening URL: ' + phantomURL);
+                // Get the token account address
+                const tokenAccount = await window.SplToken.getAssociatedTokenAddress(
+                    new solanaWeb3.PublicKey(TOKEN_MINT),
+                    dummyKey.publicKey
+                );
 
-            // Open in same window for mobile browsers
-            window.location.href = phantomURL;
+                // Create burn instruction
+                const burnInstruction = window.SplToken.createBurnInstruction(
+                    tokenAccount,
+                    new solanaWeb3.PublicKey(TOKEN_MINT),
+                    dummyKey.publicKey,
+                    AMOUNT_TO_BURN
+                );
+
+                // Create transaction and add the burn instruction
+                const transaction = new solanaWeb3.Transaction().add(burnInstruction);
+                
+                // Get recent blockhash
+                const { blockhash } = await connection.getLatestBlockhash('finalized');
+                transaction.recentBlockhash = blockhash;
+                transaction.feePayer = dummyKey.publicKey;
+
+                // Serialize the transaction
+                const serializedTransaction = transaction.serialize({
+                    requireAllSignatures: false
+                }).toString('base64');
+
+                // Create Phantom transaction request URL
+                const phantomURL = `https://phantom.app/ul/v1/request-transaction` +
+                    `?dapp_encryption_public_key=${bs58.encode(dummyKey.publicKey.toBytes())}` +
+                    `&transaction=${encodeURIComponent(serializedTransaction)}` +
+                    `&redirect_link=${encodeURIComponent(window.location.href)}` +
+                    `&network=mainnet-beta`;
+
+                updateStatus('Opening Phantom wallet...');
+                console.log('Transaction URL:', phantomURL);
+
+                // Open transaction in Phantom
+                window.location.href = phantomURL;
+
+            } catch (error) {
+                console.error('Error:', error);
+                updateStatus('Error: ' + error.message);
+            }
         }
     </script>
 </body>
