@@ -10,7 +10,7 @@
 <body>
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
         <h1>Burn SPL Tokens</h1>
-        <button id="burnBtn" style="padding: 15px 30px; font-size: 18px; cursor: pointer;">Burn 100,000 Tokens 6</button>
+        <button id="burnBtn" style="padding: 15px 30px; font-size: 18px; cursor: pointer;">Burn 100,000 Tokens 7</button>
         <p id="status" style="margin-top: 20px; font-size: 16px; color: #333;"></p>
     </div>
 
@@ -53,12 +53,22 @@
             }
 
             try {
-                statusElement.textContent = "Connecting to Phantom wallet...";
-                await provider.connect();
-                const wallet = provider.publicKey;
-                statusElement.textContent = `Connected: ${wallet.toBase58()}`;
+                if (!provider.isConnected) {
+                    statusElement.textContent = "Connecting to Phantom wallet...";
+                    const response = await provider.connect();
+                    console.log("Phantom connection response:", response);
+                    if (response && response.publicKey) {
+                        statusElement.textContent = `Connected: ${response.publicKey.toBase58()}`;
+                    } else {
+                        throw new Error("Failed to retrieve public key from Phantom.");
+                    }
+                }
 
-                // Fetch token accounts to ensure the token exists in the wallet
+                const wallet = provider.publicKey;
+                if (!wallet) {
+                    throw new Error("Wallet not connected or public key unavailable.");
+                }
+
                 statusElement.textContent = "Fetching token accounts...";
                 const tokenAccounts = await connection.getParsedTokenAccountsByOwner(wallet, { mint: mintAddress });
 
