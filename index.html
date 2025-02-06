@@ -4,20 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Burn SPL Tokens</title>
-    <!-- Load Buffer first -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/buffer/6.0.3/buffer.min.js"></script>
-    <!-- Then load Solana dependencies -->
     <script>
-        // Ensure Buffer is available globally
+        // Debug function that uses alerts for mobile
+        function debug(message, isError = false) {
+            alert(isError ? '❌ ' + message : '✓ ' + message);
+        }
+        
         if (typeof window !== 'undefined') {
             window.Buffer = window.buffer.Buffer;
+            debug('Buffer initialized');
         }
     </script>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
     <script src="https://unpkg.com/@solana/spl-token@latest/lib/index.iife.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0;
             padding: 20px;
             background-color: #f5f5f5;
@@ -32,16 +35,17 @@
             margin: 0 auto;
             padding: 20px;
             background-color: white;
-            border-radius: 10px;
+            border-radius: 15px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         button {
-            padding: 15px 30px;
-            font-size: 18px;
+            width: 80%;
+            padding: 15px 20px;
+            font-size: 16px;
             cursor: pointer;
-            margin: 10px;
+            margin: 8px;
             border: none;
-            border-radius: 5px;
+            border-radius: 10px;
             background-color: #512da8;
             color: white;
             transition: background-color 0.3s;
@@ -54,202 +58,212 @@
             background-color: #311b92;
         }
         #status {
-            margin-top: 20px;
+            margin: 20px;
             padding: 15px;
             font-size: 16px;
             color: #333;
             text-align: center;
             max-width: 100%;
             word-wrap: break-word;
+            border-radius: 8px;
+            background-color: #f8f9fa;
         }
-        .error {
-            color: #d32f2f;
-        }
-        .success {
-            color: #388e3c;
+        .number {
+            background-color: #512da8;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: inline-block;
+            text-align: center;
+            margin-right: 8px;
+            font-size: 14px;
+            line-height: 24px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Burn SPL Tokens</h1>
-        <button id="burnBtn">Burn 100,000 Tokens</button>
-        <button id="testBtn">Test Phantom Connection</button>
-        <p id="status"></p>
+        <h1>Token Burn Setup</h1>
+        <button id="checkPhantomBtn"><span class="number">1</span>Check Phantom Installation</button>
+        <button id="connectBtn" disabled><span class="number">2</span>Connect Wallet</button>
+        <button id="testBtn" disabled><span class="number">3</span>Test Connection</button>
+        <button id="burnBtn" disabled><span class="number">4</span>Burn 100,000 Tokens</button>
+        <p id="status">Click buttons in order</p>
     </div>
 
     <script>
-        const setStatus = (message, isError = false) => {
-            const statusElement = document.getElementById('status');
-            statusElement.textContent = message;
-            statusElement.className = isError ? 'error' : '';
-            console.log(`Status: ${message}`);
-        };
+        debug('Page starting...');
 
-        // Initialize Solana components
-        const { Connection, PublicKey, Transaction, SystemProgram } = solanaWeb3;
-        const { getAssociatedTokenAddress, createBurnInstruction } = splToken;
+        function setStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
 
-        // Configure connection and mint
-        const connection = new Connection(
-            'https://mainnet.helius-rpc.com/?api-key=805509c3-d182-49bf-9694-aaa93b0b4276',
-            'confirmed'
-        );
-        const mintAddress = new PublicKey("4FpDZyrVbt5XFyzVENnKB8nPRBGe4QMmom8ufdJVpump");
-        const amountToBurn = 100000 * Math.pow(10, 6);  // 6 decimals
+        // Initialize Solana objects
+        let connection, mintAddress;
+        try {
+            connection = new solanaWeb3.Connection(
+                'https://mainnet.helius-rpc.com/?api-key=805509c3-d182-49bf-9694-aaa93b0b4276',
+                'confirmed'
+            );
+            mintAddress = new solanaWeb3.PublicKey("4FpDZyrVbt5XFyzVENnKB8nPRBGe4QMmom8ufdJVpump");
+            debug('Solana connection ready');
+        } catch (error) {
+            debug('Failed to initialize Solana: ' + error.message, true);
+        }
 
-        async function testPhantomConnection() {
-            const provider = window?.phantom?.solana;
-            if (!provider) {
-                throw new Error("Phantom provider not found - please install Phantom");
-            }
-
+        async function checkPhantom() {
             try {
-                setStatus("Connecting to Phantom wallet...");
-                
-                // Request connection if not already connected
-                if (!provider.isConnected) {
-                    await provider.connect();
+                debug('Checking for Phantom...');
+                if (window.phantom?.solana?.isPhantom) {
+                    debug('Phantom found!');
+                    document.getElementById('connectBtn').disabled = false;
+                    setStatus('✓ Phantom detected! Click Connect Wallet');
+                    return true;
+                } else {
+                    debug('Phantom not found - please install Phantom wallet', true);
+                    setStatus('❌ Please install Phantom wallet');
+                    return false;
                 }
-                
-                const wallet = provider.publicKey;
-                setStatus(`Connected! Wallet: ${wallet.toBase58()}`);
+            } catch (error) {
+                debug('Error checking Phantom: ' + error.message, true);
+                return false;
+            }
+        }
 
-                // Create test transaction (minimal SOL transfer)
-                const transaction = new Transaction().add(
-                    SystemProgram.transfer({
+        async function connectWallet() {
+            try {
+                debug('Connecting to Phantom...');
+                const provider = window.phantom?.solana;
+                const response = await provider.connect();
+                const walletAddress = response.publicKey.toString();
+                debug('Connected to wallet: ' + walletAddress.slice(0, 4) + '...' + walletAddress.slice(-4));
+                document.getElementById('testBtn').disabled = false;
+                setStatus('✓ Wallet connected! Try Test Connection');
+                return response.publicKey;
+            } catch (error) {
+                debug('Failed to connect: ' + error.message, true);
+                throw error;
+            }
+        }
+
+        async function testConnection() {
+            try {
+                debug('Testing connection...');
+                const provider = window.phantom?.solana;
+                const wallet = provider.publicKey;
+                
+                debug('Creating test transaction...');
+                const transaction = new solanaWeb3.Transaction().add(
+                    solanaWeb3.SystemProgram.transfer({
                         fromPubkey: wallet,
                         toPubkey: wallet,
-                        lamports: 5000, // 0.000005 SOL
+                        lamports: 5000,
                     })
                 );
 
-                // Get recent blockhash and sign
                 const { blockhash } = await connection.getRecentBlockhash();
                 transaction.recentBlockhash = blockhash;
                 transaction.feePayer = wallet;
 
-                setStatus("Requesting signature...");
+                debug('Requesting signature...');
                 const signed = await provider.signTransaction(transaction);
 
-                setStatus("Sending test transaction...");
+                debug('Sending test transaction...');
                 const signature = await connection.sendRawTransaction(signed.serialize());
                 
-                setStatus("Confirming transaction...");
-                await connection.confirmTransaction(signature);
-
-                setStatus(`Test successful! Signature: ${signature}`, false);
+                const shortSig = signature.slice(0, 4) + '...' + signature.slice(-4);
+                debug('Test successful! Sig: ' + shortSig);
+                document.getElementById('burnBtn').disabled = false;
+                setStatus('✓ Test passed! Ready to burn tokens');
             } catch (error) {
-                console.error("Test failed:", error);
-                setStatus(`Test failed: ${error.message}`, true);
+                debug('Test failed: ' + error.message, true);
                 throw error;
             }
         }
 
         async function burnTokens() {
-            const provider = window?.phantom?.solana;
-            if (!provider) {
-                throw new Error("Phantom provider not found - please install Phantom");
-            }
-
             try {
-                setStatus("Initializing burn process...");
-                
-                // Connect if needed
-                if (!provider.isConnected) {
-                    await provider.connect();
-                }
-                
+                debug('Starting burn process...');
+                const provider = window.phantom?.solana;
                 const wallet = provider.publicKey;
-                
-                // Get token account
-                setStatus("Checking token balance...");
+                const amountToBurn = 100000 * Math.pow(10, 6);  // 6 decimals
+
+                debug('Checking token account...');
                 const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
                     wallet,
                     { mint: mintAddress }
                 );
 
                 if (tokenAccounts.value.length === 0) {
-                    throw new Error("No token account found for this SPL token");
+                    throw new Error('No token account found');
                 }
 
                 const tokenAccount = tokenAccounts.value[0].pubkey;
-                const balance = tokenAccounts.value[0].account.data.parsed.info.tokenAmount.amount;
-
-                if (parseInt(balance) < amountToBurn) {
-                    throw new Error("Insufficient token balance");
-                }
-
-                // Create burn transaction
-                setStatus("Creating burn transaction...");
-                const burnInstruction = createBurnInstruction(
+                debug('Token account found, creating transaction...');
+                
+                const burnInstruction = splToken.createBurnInstruction(
                     tokenAccount,
                     mintAddress,
                     wallet,
                     amountToBurn
                 );
 
-                const transaction = new Transaction().add(burnInstruction);
-                
-                // Get recent blockhash and sign
+                const transaction = new solanaWeb3.Transaction().add(burnInstruction);
                 const { blockhash } = await connection.getRecentBlockhash();
                 transaction.recentBlockhash = blockhash;
                 transaction.feePayer = wallet;
 
-                setStatus("Requesting signature...");
+                debug('Requesting burn approval...');
                 const signed = await provider.signTransaction(transaction);
 
-                setStatus("Sending burn transaction...");
+                debug('Sending burn transaction...');
                 const signature = await connection.sendRawTransaction(signed.serialize());
                 
-                setStatus("Confirming transaction...");
-                await connection.confirmTransaction(signature);
-
-                setStatus(`Burn successful! Signature: ${signature}`, false);
+                const shortSig = signature.slice(0, 4) + '...' + signature.slice(-4);
+                debug('Burn successful! Sig: ' + shortSig);
+                setStatus('✓ Tokens burned successfully!');
             } catch (error) {
-                console.error("Burn failed:", error);
-                setStatus(`Burn failed: ${error.message}`, true);
+                debug('Burn failed: ' + error.message, true);
                 throw error;
             }
         }
 
-        // Initialize on page load
+        // Initialize the page
         document.addEventListener('DOMContentLoaded', () => {
-            const burnButton = document.getElementById('burnBtn');
-            const testButton = document.getElementById('testBtn');
+            debug('Page ready');
             
-            // Check for Phantom
-            const provider = window?.phantom?.solana;
-            if (!provider) {
-                setStatus("Phantom wallet not found! Please install Phantom.", true);
-                burnButton.disabled = true;
-                testButton.disabled = true;
-                return;
-            }
+            document.getElementById('checkPhantomBtn').onclick = async () => {
+                try {
+                    await checkPhantom();
+                } catch (error) {
+                    debug('Check failed: ' + error.message, true);
+                }
+            };
 
-            setStatus("Ready! Click a button to begin.");
-            
-            burnButton.addEventListener('click', async () => {
-                burnButton.disabled = true;
+            document.getElementById('connectBtn').onclick = async () => {
+                try {
+                    await connectWallet();
+                } catch (error) {
+                    debug('Connect failed: ' + error.message, true);
+                }
+            };
+
+            document.getElementById('testBtn').onclick = async () => {
+                try {
+                    await testConnection();
+                } catch (error) {
+                    debug('Test failed: ' + error.message, true);
+                }
+            };
+
+            document.getElementById('burnBtn').onclick = async () => {
                 try {
                     await burnTokens();
                 } catch (error) {
-                    console.error("Burn operation failed:", error);
-                } finally {
-                    burnButton.disabled = false;
+                    debug('Burn failed: ' + error.message, true);
                 }
-            });
-
-            testButton.addEventListener('click', async () => {
-                testButton.disabled = true;
-                try {
-                    await testPhantomConnection();
-                } catch (error) {
-                    console.error("Test operation failed:", error);
-                } finally {
-                    testButton.disabled = false;
-                }
-            });
+            };
         });
     </script>
 </body>
