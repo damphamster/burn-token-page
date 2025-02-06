@@ -4,28 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Burn SPL Tokens</title>
-    <!-- Load buffer first -->
-    <script src="https://bundle.run/buffer@6.0.3"></script>
+    <!-- Load dependencies in correct order -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/buffer/6.0.3/buffer.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bn.js/5.2.1/bn.min.js"></script>
     <script>
         function debug(message, isError = false) {
             alert(isError ? '❌ ' + message : '✓ ' + message);
         }
     </script>
-    <!-- Load Solana dependencies -->
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
-    <script>
-        // Ensure libraries are loaded in correct order
-        if (!window.solanaWeb3) {
-            throw new Error('Solana Web3 not loaded correctly');
-        }
-    </script>
     <script src="https://unpkg.com/@solana/spl-token@0.3.7/lib/index.umd.min.js"></script>
-    <script>
-        // Explicitly set up SPL Token library
-        if (typeof splToken === 'undefined' && window.SplToken) {
-            window.splToken = window.SplToken;
-        }
-    </script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -92,7 +80,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Token Burn Setup 3</h1>
+        <h1>Token Burn Setup</h1>
         <button id="initBtn"><span class="number">1</span>Initialize Buffer</button>
         <button id="checkPhantomBtn" disabled><span class="number">2</span>Check Phantom</button>
         <button id="connectBtn" disabled><span class="number">3</span>Connect Wallet</button>
@@ -237,37 +225,25 @@
 
                 const tokenAccount = tokenAccounts.value[0].pubkey;
                 debug('Token account found, creating transaction...');
+
+                // Create burn instruction manually
+                const TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
                 
-                debug('Checking SPL token library...');
-                const tokenLib = window.splToken || window.SplToken;
-                if (!tokenLib) {
-                    debug('Attempting to use TokenProgram from web3.js...');
-                    // Fallback to using Token Program directly
-                    const TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
-                    
-                    const burnInstruction = new solanaWeb3.TransactionInstruction({
-                        programId: TOKEN_PROGRAM_ID,
-                        keys: [
-                            { pubkey: tokenAccount, isSigner: false, isWritable: true },
-                            { pubkey: mintAddress, isSigner: false, isWritable: true },
-                            { pubkey: wallet, isSigner: true, isWritable: false },
-                        ],
-                        data: Buffer.from([17, ...new BN(amountToBurn).toArray('le', 8)])
-                    });
-                } else {
-                    debug('Creating burn instruction using SPL library...');
-                    const burnInstruction = tokenLib.createBurnInstruction(
-                        tokenAccount,
-                        mintAddress,
-                        wallet,
-                        amountToBurn
-                    );
-                }
-                    tokenAccount,
-                    mintAddress,
-                    wallet,
-                    amountToBurn
-                );
+                // Create burn instruction data: [8, ...uint64 amount]
+                const dataLayout = new Uint8Array(9);
+                dataLayout[0] = 8; // Burn instruction
+                const amountBytes = new BN(amountToBurn).toArray('le', 8);
+                dataLayout.set(amountBytes, 1);
+
+                const burnInstruction = new solanaWeb3.TransactionInstruction({
+                    keys: [
+                        { pubkey: tokenAccount, isSigner: false, isWritable: true },
+                        { pubkey: mintAddress, isSigner: false, isWritable: true },
+                        { pubkey: wallet, isSigner: true, isWritable: false },
+                    ],
+                    programId: TOKEN_PROGRAM_ID,
+                    data: dataLayout,
+                });
 
                 const transaction = new solanaWeb3.Transaction().add(burnInstruction);
                 const { blockhash } = await connection.getRecentBlockhash();
