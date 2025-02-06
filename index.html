@@ -6,12 +6,16 @@
     <title>Burn SPL Tokens</title>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
     <script src="https://unpkg.com/@solana/spl-token@latest/lib/index.iife.js"></script>
+    <script src="https://unpkg.com/buffer@6.0.3/index.js"></script>
+    <script>
+        window.Buffer = window.buffer.Buffer; // Corrected Buffer polyfill for browser environment
+    </script>
 </head>
 <body>
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
         <h1>Burn SPL Tokens</h1>
         <button id="burnBtn" style="padding: 15px 30px; font-size: 18px; cursor: pointer;">Burn 100,000 Tokens</button>
-        <button id="testBtn" style="padding: 15px 30px; font-size: 18px; margin-top: 20px; cursor: pointer;">Test Phantom Connection</button>
+        <button id="testBtn" style="padding: 15px 30px; font-size: 18px; margin-top: 20px; cursor: pointer;">Test Phantom Connection 1</button>
         <p id="status" style="margin-top: 20px; font-size: 16px; color: #333;"></p>
     </div>
 
