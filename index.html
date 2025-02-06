@@ -10,7 +10,8 @@
 <body>
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
         <h1>Burn SPL Tokens</h1>
-        <button id="burnBtn" style="padding: 15px 30px; font-size: 18px; cursor: pointer;">Burn 100,000 Tokens 1</button>
+        <button id="burnBtn" style="padding: 15px 30px; font-size: 18px; cursor: pointer;">Burn 100,000 Tokens 2</button>
+        <p id="status" style="margin-top: 20px; font-size: 16px; color: #333;"></p>
     </div>
 
     <script>
@@ -21,26 +22,29 @@
         const mintAddress = new PublicKey("4FpDZyrVbt5XFyzVENnKB8nPRBGe4QMmom8ufdJVpump");
         const amountToBurn = 100000 * Math.pow(10, 6);  // Adjusting for 6 decimals
 
-        async function burnTokens() {
-            console.log("Burn button clicked");
+        const statusElement = document.getElementById('status');
 
+        async function burnTokens() {
             const provider = window.solana;
             if (!provider || !provider.isPhantom) {
                 alert("Phantom wallet not found! Please install Phantom to proceed.");
                 return;
             }
 
+            const burnButton = document.getElementById('burnBtn');
+            burnButton.disabled = true;
+            statusElement.textContent = "Connecting to Phantom wallet...";
+
             try {
-                console.log("Connecting to Phantom...");
                 await provider.connect();
                 const wallet = provider.publicKey;
-                console.log("Connected wallet:", wallet.toBase58());
+                statusElement.textContent = `Connected: ${wallet.toBase58()}`;
 
-                console.log("Fetching associated token account...");
+                statusElement.textContent = "Fetching token account...";
                 const tokenAccount = await getAssociatedTokenAddress(mintAddress, wallet);
-                console.log("Token account:", tokenAccount.toBase58());
+                statusElement.textContent = `Token Account: ${tokenAccount.toBase58()}`;
 
-                console.log("Creating burn instruction...");
+                statusElement.textContent = "Creating burn transaction...";
                 const burnInstruction = createBurnInstruction(
                     tokenAccount,
                     mintAddress,
@@ -53,19 +57,22 @@
                 const { blockhash } = await connection.getRecentBlockhash();
                 transaction.recentBlockhash = blockhash;
 
-                console.log("Requesting signature from Phantom...");
+                statusElement.textContent = "Requesting signature from Phantom...";
                 const signedTransaction = await provider.signTransaction(transaction);
-                console.log("Transaction signed!");
 
-                console.log("Sending transaction to Solana...");
+                statusElement.textContent = "Sending transaction to Solana...";
                 const signature = await connection.sendRawTransaction(signedTransaction.serialize());
-                console.log("Transaction signature:", signature);
+                statusElement.textContent = `Transaction sent! Signature: ${signature}`;
 
                 await connection.confirmTransaction(signature);
+                statusElement.textContent = "Successfully burned 100,000 tokens!";
                 alert(`Successfully burned 100,000 tokens!\nTransaction Signature: ${signature}`);
             } catch (error) {
                 console.error("Error burning tokens:", error);
+                statusElement.textContent = `Error: ${error.message}`;
                 alert(`Failed to burn tokens: ${error.message}`);
+            } finally {
+                burnButton.disabled = false;
             }
         }
 
