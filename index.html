@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Burn SPL Tokens</title>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
-    <script src="https://unpkg.com/@solana/spl-token@latest/lib/index.iife.min.js"></script>
+    <script src="https://unpkg.com/@solana/spl-token@latest/lib/index.iife.js"></script>
 </head>
 <body>
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
         <h1>Burn SPL Tokens</h1>
-        <button id="burnBtn" style="padding: 15px 30px; font-size: 18px; cursor: pointer;">Burn 100,000 Tokens 7</button>
+        <button id="burnBtn" style="padding: 15px 30px; font-size: 18px; cursor: pointer;">Burn 100,000 Tokens</button>
+        <button id="testBtn" style="padding: 15px 30px; font-size: 18px; margin-top: 20px; cursor: pointer;">Test Phantom Connection</button>
         <p id="status" style="margin-top: 20px; font-size: 16px; color: #333;"></p>
     </div>
 
@@ -18,6 +19,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const statusElement = document.getElementById('status');
             const burnButton = document.getElementById('burnBtn');
+            const testButton = document.getElementById('testBtn');
             
             statusElement.textContent = "Page loaded. Checking for Phantom wallet...";
             
@@ -25,20 +27,69 @@
             if (!provider || !provider.isPhantom) {
                 statusElement.textContent = "Phantom wallet not found! Please install Phantom.";
                 burnButton.disabled = true;
+                testButton.disabled = true;
                 return;
             } else {
-                statusElement.textContent = "Phantom wallet detected. Ready to burn tokens.";
+                statusElement.textContent = "Phantom wallet detected. Ready to burn tokens or test connection.";
             }
 
             burnButton.addEventListener('click', burnTokens);
+            testButton.addEventListener('click', testPhantomConnection);
         });
 
-        const { Connection, PublicKey, clusterApiUrl, Transaction } = solanaWeb3;
-        const { getAssociatedTokenAddress, createBurnInstruction } = solanaSplToken;
+        const { Connection, PublicKey, clusterApiUrl, Transaction, SystemProgram } = solanaWeb3;
+        const { getAssociatedTokenAddress, createBurnInstruction } = splToken;
 
         const connection = new Connection(clusterApiUrl("mainnet-beta"));
         const mintAddress = new PublicKey("4FpDZyrVbt5XFyzVENnKB8nPRBGe4QMmom8ufdJVpump");
         const amountToBurn = 100000 * Math.pow(10, 6);  // Adjusting for 6 decimals
+
+        async function testPhantomConnection() {
+            const statusElement = document.getElementById('status');
+            const provider = window.solana;
+
+            try {
+                statusElement.textContent = "Connecting to Phantom wallet for test...";
+                const response = await provider.connect();
+                console.log("Phantom connection response:", response);
+
+                const wallet = response.publicKey || provider.publicKey;
+                if (!wallet) {
+                    throw new Error("Failed to retrieve public key from Phantom.");
+                }
+
+                statusElement.textContent = `Connected to Phantom! Public Key: ${wallet.toBase58()}`;
+                alert(`Connected to Phantom! Public Key: ${wallet.toBase58()}`);
+
+                // Test sending 0.00001 SOL to yourself
+                statusElement.textContent = "Creating test transaction (sending 0.00001 SOL to yourself)...";
+                const transaction = new Transaction().add(
+                    SystemProgram.transfer({
+                        fromPubkey: wallet,
+                        toPubkey: wallet,
+                        lamports: 10000, // 0.00001 SOL
+                    })
+                );
+
+                transaction.feePayer = wallet;
+                const { blockhash } = await connection.getRecentBlockhash();
+                transaction.recentBlockhash = blockhash;
+
+                statusElement.textContent = "Requesting signature from Phantom...";
+                const signedTransaction = await provider.signTransaction(transaction);
+
+                statusElement.textContent = "Sending test transaction to Solana network...";
+                const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+                await connection.confirmTransaction(signature);
+
+                statusElement.textContent = `Test transaction successful! Signature: ${signature}`;
+                alert(`Test transaction successful! Signature: ${signature}`);
+            } catch (error) {
+                console.error("Error testing Phantom connection:", error);
+                statusElement.textContent = `Error during test: ${error.message}`;
+                alert(`Error during test: ${error.message}`);
+            }
+        }
 
         async function burnTokens() {
             const statusElement = document.getElementById('status');
@@ -56,10 +107,7 @@
                 if (!provider.isConnected) {
                     statusElement.textContent = "Connecting to Phantom wallet...";
                     const response = await provider.connect();
-                    console.log("Phantom connection response:", response);
-                    if (response && response.publicKey) {
-                        statusElement.textContent = `Connected: ${response.publicKey.toBase58()}`;
-                    } else {
+                    if (!response || !response.publicKey) {
                         throw new Error("Failed to retrieve public key from Phantom.");
                     }
                 }
