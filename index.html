@@ -125,10 +125,31 @@
                 }
 
                 // Initialize Solana connection
+                // Initialize Solana connection using our proxy
                 debug('Initializing Solana connection...');
                 connection = new solanaWeb3.Connection(
-                    'https://mainnet.helius-rpc.com/?api-key=805509c3-d182-49bf-9694-aaa93b0b4276',
-                    'confirmed'
+                    '/api/proxy',  // This will route through our Vercel serverless function
+                    {
+                        commitment: 'confirmed',
+                        fetch: async (url, options) => {
+                            try {
+                                const response = await fetch('/api/proxy', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: options.body
+                                });
+                                if (!response.ok) {
+                                    throw new Error(`HTTP error! status: ${response.status}`);
+                                }
+                                return response;
+                            } catch (error) {
+                                debug('Connection error: ' + error.message, true);
+                                throw error;
+                            }
+                        }
+                    }
                 );
                 mintAddress = new solanaWeb3.PublicKey("4FpDZyrVbt5XFyzVENnKB8nPRBGe4QMmom8ufdJVpump");
 
