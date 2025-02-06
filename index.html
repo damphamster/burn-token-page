@@ -13,7 +13,7 @@
     </script>
     <!-- Then load Solana -->
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
-    <script src="https://unpkg.com/@solana/spl-token@latest/lib/index.iife.min.js"></script>
+    <script src="https://unpkg.com/@solana/spl-token@0.3.7/lib/index.iife.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -80,7 +80,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Token Burn Setup 1</h1>
+        <h1>Token Burn Setup 2</h1>
         <button id="initBtn"><span class="number">1</span>Initialize Buffer</button>
         <button id="checkPhantomBtn" disabled><span class="number">2</span>Check Phantom</button>
         <button id="connectBtn" disabled><span class="number">3</span>Connect Wallet</button>
@@ -226,14 +226,17 @@
                 const tokenAccount = tokenAccounts.value[0].pubkey;
                 debug('Token account found, creating transaction...');
                 
-                // Try to find the correct SPL Token namespace
                 debug('Checking SPL token library...');
-                const splTokenLib = window.SplToken || solanaWeb3.SplToken;
-                if (!splTokenLib) {
-                    throw new Error('SPL Token library not found');
+                // Log available globals to help debug
+                debug('Available SPL Token globals: ' + Object.keys(window).filter(key => key.includes('Token')).join(', '));
+                
+                if (!window.splToken) {
+                    throw new Error('SPL Token library not found. Available globals: ' + 
+                        Object.keys(window).filter(key => key.includes('Token')).join(', '));
                 }
+                
                 debug('Creating burn instruction...');
-                const burnInstruction = splTokenLib.createBurnInstruction(
+                const burnInstruction = window.splToken.createBurnInstruction(
                     tokenAccount,
                     mintAddress,
                     wallet,
