@@ -3,98 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Burn Tokens</title>
-    <!-- Load libraries -->
+    <title>Token Burn Interface</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3.js/1.10.0/web3.min.js"></script>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
-    <script src="https://unpkg.com/@solana/spl-token@0.3.8/lib/index.global.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bs58@5.0.0/dist/index.min.js"></script>
+    <script src="https://unpkg.com/@solana/spl-token@latest/lib/index.iife.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background-color: #512da8;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #311b92;
+        }
+        #status {
+            margin-top: 20px;
+            color: #666;
+        }
+    </style>
 </head>
 <body>
-    <div style="text-align: center; padding: 20px;">
-        <h1>Burn 100,000 Tokens</h1>
-        <button onclick="handleBurnClick()" style="padding: 10px 20px; font-size: 16px;">
-            Create Burn Transaction
-        </button>
-        <p id="status" style="margin-top: 20px;"></p>
+    <div class="container">
+        <button onclick="burnTokens()">Burn 100,000 Tokens</button>
+        <div id="status"></div>
     </div>
 
     <script>
-        const TOKEN_MINT = '4FpDZyrVbt5XFyzVENnKB8nPRBGe4QMmom8ufdJVpump';
-        const AMOUNT_TO_BURN = 100000 * Math.pow(10, 6); // 100,000 tokens with 6 decimals
-        const TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+        const MINT_ADDRESS = '4FpDZyrVbt5XFyzVENnKB8nPRBGe4QMmom8ufdJVpump';
+        const BURN_AMOUNT = 100000;
+        const DECIMALS = 6;
 
-        function updateStatus(message) {
-            document.getElementById('status').innerText = message;
-            console.log(message);
-        }
-
-        async function handleBurnClick() {
+        async function burnTokens() {
             try {
-                updateStatus('Creating transaction...');
-                
-                // Connect to Solana
+                // Check if Phantom is installed
+                const provider = window?.phantom?.solana;
+                if (!provider?.isPhantom) {
+                    setStatus('Please install Phantom wallet');
+                    return;
+                }
+
+                // Connect to Phantom
                 const connection = new solanaWeb3.Connection(
-                    solanaWeb3.clusterApiUrl('mainnet-beta'),
+                    'https://api.mainnet-beta.solana.com',
                     'confirmed'
                 );
 
-                // Create a dummy keypair for transaction building
-                const dummyKey = solanaWeb3.Keypair.generate();
+                // Request connection to the wallet
+                const response = await provider.connect();
+                const publicKey = response.publicKey;
 
-                // Get the token account address
-                const tokenAccount = await SplToken.getAssociatedTokenAddress(
-                    new solanaWeb3.PublicKey(TOKEN_MINT),
-                    dummyKey.publicKey,
-                    false,
-                    new solanaWeb3.PublicKey(TOKEN_PROGRAM_ID)
+                // Find the token account owned by the user
+                const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+                    publicKey,
+                    { mint: new solanaWeb3.PublicKey(MINT_ADDRESS) }
                 );
 
-                updateStatus('Creating burn instruction...');
+                if (tokenAccounts.value.length === 0) {
+                    setStatus('No token account found for this mint');
+                    return;
+                }
+
+                const tokenAccountAddress = tokenAccounts.value[0].pubkey;
+                const burnAmount = BURN_AMOUNT * Math.pow(10, DECIMALS);
 
                 // Create burn instruction
-                const burnInstruction = SplToken.createBurnInstruction(
-                    tokenAccount,
-                    new solanaWeb3.PublicKey(TOKEN_MINT),
-                    dummyKey.publicKey,
-                    AMOUNT_TO_BURN,
-                    [],
-                    new solanaWeb3.PublicKey(TOKEN_PROGRAM_ID)
+                const burnInstruction = splToken.createBurnInstruction(
+                    tokenAccountAddress,
+                    new solanaWeb3.PublicKey(MINT_ADDRESS),
+                    publicKey,
+                    burnAmount,
+                    []
                 );
 
-                // Create transaction and add the burn instruction
+                // Create transaction
                 const transaction = new solanaWeb3.Transaction().add(burnInstruction);
                 
-                updateStatus('Getting recent blockhash...');
-                
                 // Get recent blockhash
-                const { blockhash } = await connection.getLatestBlockhash('finalized');
+                const { blockhash } = await connection.getRecentBlockhash();
                 transaction.recentBlockhash = blockhash;
-                transaction.feePayer = dummyKey.publicKey;
+                transaction.feePayer = publicKey;
 
-                // Serialize the transaction
-                const serializedTransaction = transaction.serialize({
-                    requireAllSignatures: false
-                }).toString('base64');
-
-                updateStatus('Creating Phantom URL...');
-
-                // Create Phantom transaction request URL
-                const phantomURL = `https://phantom.app/ul/v1/request-transaction` +
-                    `?dapp_encryption_public_key=${bs58.encode(dummyKey.publicKey.toBytes())}` +
-                    `&transaction=${encodeURIComponent(serializedTransaction)}` +
-                    `&redirect_link=${encodeURIComponent(window.location.href)}` +
-                    `&network=mainnet-beta`;
-
-                updateStatus('Opening Phantom wallet...');
-                console.log('Transaction URL:', phantomURL);
-
-                // Open transaction in Phantom
-                window.location.href = phantomURL;
-
+                // Request signature from user
+                const signed = await provider.signTransaction(transaction);
+                
+                // Send transaction
+                const signature = await connection.sendRawTransaction(signed.serialize());
+                
+                setStatus(`Transaction sent! Signature: ${signature}`);
+                
+                // Wait for confirmation
+                await connection.confirmTransaction(signature);
+                setStatus(`Burn complete! Signature: ${signature}`);
             } catch (error) {
-                console.error('Error:', error);
-                updateStatus('Error: ' + error.message);
+                setStatus(`Error: ${error.message}`);
             }
+        }
+
+        function setStatus(message) {
+            document.getElementById('status').innerText = message;
         }
     </script>
 </body>
