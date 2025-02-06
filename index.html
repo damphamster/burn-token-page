@@ -6,7 +6,11 @@
     <title>Burn SPL Tokens</title>
     <!-- Load dependencies in correct order -->
     <script src="https://bundle.run/buffer@6.0.3"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bn.js/5.2.1/bn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bn.js@5.2.1/lib/bn.min.js"></script>
+    <script>
+        // Make BN available globally
+        window.BN = window.BN || bn;
+    </script>
     <script>
         // Initialize debug function before using it
         function debug(message, isError = false) {
@@ -89,7 +93,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Token Burn Setup</h1>
+        <h1>Token Burn Setup 1</h1>
         <button id="initBtn"><span class="number">1</span>Initialize Buffer</button>
         <button id="checkPhantomBtn" disabled><span class="number">2</span>Check Phantom</button>
         <button id="connectBtn" disabled><span class="number">3</span>Connect Wallet</button>
@@ -246,10 +250,20 @@
                 // Create burn instruction manually
                 const TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
                 
+                debug('Creating burn instruction data...');
                 // Create burn instruction data: [8, ...uint64 amount]
                 const dataLayout = new Uint8Array(9);
                 dataLayout[0] = 8; // Burn instruction
-                const amountBytes = new BN(amountToBurn).toArray('le', 8);
+
+                // Check if BN is available
+                if (!window.BN) {
+                    throw new Error('BN library not found');
+                }
+
+                // Convert amount to bytes
+                debug('Converting amount to bytes...');
+                const amountBN = new window.BN(amountToBurn.toString());
+                const amountBytes = amountBN.toArray('le', 8);
                 dataLayout.set(amountBytes, 1);
 
                 const burnInstruction = new solanaWeb3.TransactionInstruction({
