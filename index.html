@@ -10,7 +10,7 @@
 <body>
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
         <h1>Burn SPL Tokens</h1>
-        <button id="burnBtn" style="padding: 15px 30px; font-size: 18px; cursor: pointer;">Burn 100,000 Tokens 3</button>
+        <button id="burnBtn" style="padding: 15px 30px; font-size: 18px; cursor: pointer;">Burn 100,000 Tokens 4</button>
         <p id="status" style="margin-top: 20px; font-size: 16px; color: #333;"></p>
     </div>
 
@@ -34,7 +34,7 @@
         });
 
         const { Connection, PublicKey, clusterApiUrl, Transaction } = solanaWeb3;
-        const { getAssociatedTokenAddress, createBurnInstruction } = solanaSplToken;
+        const { getOrCreateAssociatedTokenAccount, createBurnInstruction } = solanaSplToken;
 
         const connection = new Connection(clusterApiUrl("mainnet-beta"));
         const mintAddress = new PublicKey("4FpDZyrVbt5XFyzVENnKB8nPRBGe4QMmom8ufdJVpump");
@@ -53,13 +53,18 @@
                 const wallet = provider.publicKey;
                 statusElement.textContent = `Connected: ${wallet.toBase58()}`;
 
-                statusElement.textContent = "Fetching associated token account...";
-                const tokenAccount = await getAssociatedTokenAddress(mintAddress, wallet);
-                statusElement.textContent = `Token Account: ${tokenAccount.toBase58()}`;
+                statusElement.textContent = "Ensuring associated token account exists...";
+                const tokenAccount = await getOrCreateAssociatedTokenAccount(
+                    connection,
+                    wallet,
+                    mintAddress,
+                    wallet
+                );
+                statusElement.textContent = `Token Account: ${tokenAccount.address.toBase58()}`;
 
                 statusElement.textContent = "Creating burn transaction...";
                 const burnInstruction = createBurnInstruction(
-                    tokenAccount,
+                    tokenAccount.address,
                     mintAddress,
                     wallet,
                     amountToBurn
@@ -71,12 +76,9 @@
                 transaction.recentBlockhash = blockhash;
 
                 statusElement.textContent = "Requesting signature from Phantom...";
-                const signedTransaction = await provider.signTransaction(transaction);
+                const { signature } = await provider.signAndSendTransaction(transaction);
 
-                statusElement.textContent = "Sending transaction to Solana network...";
-                const signature = await connection.sendRawTransaction(signedTransaction.serialize());
-                statusElement.textContent = `Transaction sent! Signature: ${signature}`;
-
+                statusElement.textContent = "Transaction sent to Solana network...";
                 await connection.confirmTransaction(signature);
                 statusElement.textContent = "Successfully burned 100,000 tokens!";
                 alert(`Successfully burned 100,000 tokens!\nTransaction Signature: ${signature}`);
