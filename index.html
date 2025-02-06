@@ -8,10 +8,6 @@
     <script src="https://bundle.run/buffer@6.0.3"></script>
     <script src="https://cdn.jsdelivr.net/npm/bn.js@5.2.1/lib/bn.min.js"></script>
     <script>
-        // Make BN available globally
-        window.BN = window.BN || bn;
-    </script>
-    <script>
         // Initialize debug function before using it
         function debug(message, isError = false) {
             alert(isError ? '❌ ' + message : '✓ ' + message);
@@ -21,8 +17,9 @@
             window.Buffer = buffer.Buffer;
             window.global = window;
             global.Buffer = buffer.Buffer;
+            window.BN = window.BN || bn;
         } catch (error) {
-            debug('Initial Buffer setup failed: ' + error.message, true);
+            debug('Initial setup failed: ' + error.message, true);
         }
     </script>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
@@ -93,13 +90,12 @@
 </head>
 <body>
     <div class="container">
-        <h1>Token Burn Setup 1</h1>
-        <button id="initBtn"><span class="number">1</span>Initialize Buffer</button>
+        <h1>Token Burn Setup</h1>
+        <button id="initBtn"><span class="number">1</span>Initialize</button>
         <button id="checkPhantomBtn" disabled><span class="number">2</span>Check Phantom</button>
         <button id="connectBtn" disabled><span class="number">3</span>Connect Wallet</button>
-        <button id="testBtn" disabled><span class="number">4</span>Test Connection</button>
-        <button id="burnBtn" disabled><span class="number">5</span>Burn 100,000 Tokens</button>
-        <p id="status">Start by initializing Buffer</p>
+        <button id="burnBtn" disabled><span class="number">4</span>Burn 100,000 Tokens</button>
+        <p id="status">Start by clicking Initialize</p>
     </div>
 
     <script>
@@ -131,7 +127,7 @@
                 // Initialize Solana connection
                 debug('Initializing Solana connection...');
                 connection = new solanaWeb3.Connection(
-                    'https://mainnet.helius-rpc.com/?api-key=805509c3-d182-49bf-9694-aaa93b0b4276',
+                    'https://api.mainnet-beta.solana.com',
                     'confirmed'
                 );
                 mintAddress = new solanaWeb3.PublicKey("4FpDZyrVbt5XFyzVENnKB8nPRBGe4QMmom8ufdJVpump");
@@ -143,10 +139,6 @@
             } catch (error) {
                 const errorMsg = 'Initialization failed: ' + (error.message || 'Unknown error');
                 debug(errorMsg, true);
-                // Log more details about the environment
-                debug('Debug info: Buffer exists: ' + (!!window.Buffer) + 
-                      ', buffer object exists: ' + (!!window.buffer) +
-                      ', global exists: ' + (!!window.global), true);
                 return false;
             }
         }
@@ -177,52 +169,11 @@
                 const response = await provider.connect();
                 const walletAddress = response.publicKey.toString();
                 debug('Connected to wallet: ' + walletAddress.slice(0, 4) + '...' + walletAddress.slice(-4));
-                document.getElementById('testBtn').disabled = false;
-                setStatus('✓ Wallet connected! Try Test Connection');
+                document.getElementById('burnBtn').disabled = false;
+                setStatus('✓ Wallet connected! Ready to burn tokens.');
                 return response.publicKey;
             } catch (error) {
                 debug('Failed to connect: ' + error.message, true);
-                throw error;
-            }
-        }
-
-        async function testConnection() {
-            try {
-                debug('Testing connection...');
-                const provider = window.phantom?.solana;
-                const wallet = provider.publicKey;
-                
-                debug('Creating test transaction...');
-                
-                // Create a minimal transaction
-                let transaction = new solanaWeb3.Transaction();
-                
-                // Add a simple transfer instruction
-                transaction.add(
-                    solanaWeb3.SystemProgram.transfer({
-                        fromPubkey: wallet,
-                        toPubkey: wallet,
-                        lamports: 5000,
-                    })
-                );
-
-                debug('Getting recent blockhash...');
-                const { blockhash } = await connection.getRecentBlockhash();
-                transaction.recentBlockhash = blockhash;
-                transaction.feePayer = wallet;
-
-                debug('Requesting signature...');
-                const signed = await provider.signTransaction(transaction);
-
-                debug('Sending test transaction...');
-                const signature = await connection.sendRawTransaction(signed.serialize());
-                
-                const shortSig = signature.slice(0, 4) + '...' + signature.slice(-4);
-                debug('Test successful! Sig: ' + shortSig);
-                document.getElementById('burnBtn').disabled = false;
-                setStatus('✓ Test passed! Ready to burn tokens');
-            } catch (error) {
-                debug('Test failed: ' + error.message, true);
                 throw error;
             }
         }
@@ -319,14 +270,6 @@
                     await connectWallet();
                 } catch (error) {
                     debug('Connect failed: ' + error.message, true);
-                }
-            };
-
-            document.getElementById('testBtn').onclick = async () => {
-                try {
-                    await testConnection();
-                } catch (error) {
-                    debug('Test failed: ' + error.message, true);
                 }
             };
 
