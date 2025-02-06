@@ -10,11 +10,29 @@
 <body>
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
         <h1>Burn SPL Tokens</h1>
-        <button id="burnBtn" style="padding: 15px 30px; font-size: 18px; cursor: pointer;">Burn 100,000 Tokens 2</button>
+        <button id="burnBtn" style="padding: 15px 30px; font-size: 18px; cursor: pointer;">Burn 100,000 Tokens 3</button>
         <p id="status" style="margin-top: 20px; font-size: 16px; color: #333;"></p>
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const statusElement = document.getElementById('status');
+            const burnButton = document.getElementById('burnBtn');
+            
+            statusElement.textContent = "Page loaded. Checking for Phantom wallet...";
+            
+            const provider = window.solana;
+            if (!provider || !provider.isPhantom) {
+                statusElement.textContent = "Phantom wallet not found! Please install Phantom.";
+                burnButton.disabled = true;
+                return;
+            } else {
+                statusElement.textContent = "Phantom wallet detected. Ready to burn tokens.";
+            }
+
+            burnButton.addEventListener('click', burnTokens);
+        });
+
         const { Connection, PublicKey, clusterApiUrl, Transaction } = solanaWeb3;
         const { getAssociatedTokenAddress, createBurnInstruction } = solanaSplToken;
 
@@ -22,25 +40,20 @@
         const mintAddress = new PublicKey("4FpDZyrVbt5XFyzVENnKB8nPRBGe4QMmom8ufdJVpump");
         const amountToBurn = 100000 * Math.pow(10, 6);  // Adjusting for 6 decimals
 
-        const statusElement = document.getElementById('status');
-
         async function burnTokens() {
-            const provider = window.solana;
-            if (!provider || !provider.isPhantom) {
-                alert("Phantom wallet not found! Please install Phantom to proceed.");
-                return;
-            }
-
+            const statusElement = document.getElementById('status');
             const burnButton = document.getElementById('burnBtn');
+            
             burnButton.disabled = true;
             statusElement.textContent = "Connecting to Phantom wallet...";
 
+            const provider = window.solana;
             try {
-                await provider.connect();
+                const connectionResponse = await provider.connect();
                 const wallet = provider.publicKey;
                 statusElement.textContent = `Connected: ${wallet.toBase58()}`;
 
-                statusElement.textContent = "Fetching token account...";
+                statusElement.textContent = "Fetching associated token account...";
                 const tokenAccount = await getAssociatedTokenAddress(mintAddress, wallet);
                 statusElement.textContent = `Token Account: ${tokenAccount.toBase58()}`;
 
@@ -60,7 +73,7 @@
                 statusElement.textContent = "Requesting signature from Phantom...";
                 const signedTransaction = await provider.signTransaction(transaction);
 
-                statusElement.textContent = "Sending transaction to Solana...";
+                statusElement.textContent = "Sending transaction to Solana network...";
                 const signature = await connection.sendRawTransaction(signedTransaction.serialize());
                 statusElement.textContent = `Transaction sent! Signature: ${signature}`;
 
@@ -75,8 +88,6 @@
                 burnButton.disabled = false;
             }
         }
-
-        document.getElementById('burnBtn').addEventListener('click', burnTokens);
     </script>
 </body>
 </html>
