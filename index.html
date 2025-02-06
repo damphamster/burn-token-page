@@ -12,8 +12,14 @@
         }
         
         if (typeof window !== 'undefined') {
-            window.Buffer = window.buffer.Buffer;
-            debug('Buffer initialized');
+            try {
+                window.Buffer = buffer.Buffer;
+                window.global = window;
+                global.Buffer = buffer.Buffer;
+                debug('Buffer initialized globally');
+            } catch (error) {
+                debug('Buffer initialization error: ' + error.message, true);
+            }
         }
     </script>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
@@ -85,7 +91,7 @@
 <body>
     <div class="container">
         <h1>Token Burn Setup</h1>
-        <button id="checkPhantomBtn"><span class="number">1</span>Check Phantom Installation</button>
+        <button id="checkPhantomBtn"><span class="number">1</span>Check Phantom Installation 1</button>
         <button id="connectBtn" disabled><span class="number">2</span>Connect Wallet</button>
         <button id="testBtn" disabled><span class="number">3</span>Test Connection</button>
         <button id="burnBtn" disabled><span class="number">4</span>Burn 100,000 Tokens</button>
@@ -154,7 +160,13 @@
                 const wallet = provider.publicKey;
                 
                 debug('Creating test transaction...');
-                const transaction = new solanaWeb3.Transaction().add(
+                if (!window.Buffer || !global.Buffer) {
+                    throw new Error('Buffer not properly initialized');
+                }
+                
+                // Create a simpler test transaction
+                const transaction = new solanaWeb3.Transaction();
+                transaction.add(
                     solanaWeb3.SystemProgram.transfer({
                         fromPubkey: wallet,
                         toPubkey: wallet,
