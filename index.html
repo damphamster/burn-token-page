@@ -127,13 +127,15 @@
                 // Initialize Solana connection
                 // Initialize Solana connection using our proxy
                 debug('Initializing Solana connection...');
+                // Get the current deployment URL or use localhost for development
+                const baseUrl = window.location.origin;
                 connection = new solanaWeb3.Connection(
-                    '/api/proxy',  // This will route through our Vercel serverless function
+                    `${baseUrl}/api/proxy`,  // Full URL to our proxy
                     {
                         commitment: 'confirmed',
                         fetch: async (url, options) => {
                             try {
-                                const response = await fetch('/api/proxy', {
+                                const response = await fetch(`${baseUrl}/api/proxy`, {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json',
