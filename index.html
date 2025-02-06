@@ -5,11 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Burn SPL Tokens</title>
     <!-- Load dependencies in correct order -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/buffer/6.0.3/buffer.min.js"></script>
+    <script src="https://bundle.run/buffer@6.0.3"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bn.js/5.2.1/bn.min.js"></script>
     <script>
+        // Initialize debug function before using it
         function debug(message, isError = false) {
             alert(isError ? '❌ ' + message : '✓ ' + message);
+        }
+        // Set up Buffer immediately
+        try {
+            window.Buffer = buffer.Buffer;
+            window.global = window;
+            global.Buffer = buffer.Buffer;
+        } catch (error) {
+            debug('Initial Buffer setup failed: ' + error.message, true);
         }
     </script>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
@@ -98,34 +107,42 @@
 
         async function initializeBuffer() {
             try {
-                debug('Initializing Buffer...');
+                debug('Checking Buffer availability...');
                 
-                // Set up Buffer globally
-                if (typeof window !== 'undefined') {
+                // Check if Buffer is already available
+                if (!window.Buffer) {
+                    debug('Buffer not found in window, attempting to set it up...');
                     window.Buffer = buffer.Buffer;
-                    global = window;
+                    window.global = window;
                     global.Buffer = buffer.Buffer;
                 }
 
                 // Test Buffer functionality
+                debug('Testing Buffer...');
                 const testBuf = Buffer.from([1, 2, 3]);
                 if (testBuf.length !== 3) {
-                    throw new Error('Buffer not working correctly');
+                    throw new Error('Buffer test failed');
                 }
 
                 // Initialize Solana connection
+                debug('Initializing Solana connection...');
                 connection = new solanaWeb3.Connection(
                     'https://mainnet.helius-rpc.com/?api-key=805509c3-d182-49bf-9694-aaa93b0b4276',
                     'confirmed'
                 );
                 mintAddress = new solanaWeb3.PublicKey("4FpDZyrVbt5XFyzVENnKB8nPRBGe4QMmom8ufdJVpump");
 
-                debug('Buffer and Solana initialized successfully');
+                debug('Everything initialized successfully');
                 document.getElementById('checkPhantomBtn').disabled = false;
                 setStatus('✓ Initialization complete. Check Phantom next.');
                 return true;
             } catch (error) {
-                debug('Initialization failed: ' + error.message, true);
+                const errorMsg = 'Initialization failed: ' + (error.message || 'Unknown error');
+                debug(errorMsg, true);
+                // Log more details about the environment
+                debug('Debug info: Buffer exists: ' + (!!window.Buffer) + 
+                      ', buffer object exists: ' + (!!window.buffer) +
+                      ', global exists: ' + (!!window.global), true);
                 return false;
             }
         }
