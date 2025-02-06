@@ -80,7 +80,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Token Burn Setup</h1>
+        <h1>Token Burn Setup 1</h1>
         <button id="initBtn"><span class="number">1</span>Initialize Buffer</button>
         <button id="checkPhantomBtn" disabled><span class="number">2</span>Check Phantom</button>
         <button id="connectBtn" disabled><span class="number">3</span>Connect Wallet</button>
@@ -226,7 +226,14 @@
                 const tokenAccount = tokenAccounts.value[0].pubkey;
                 debug('Token account found, creating transaction...');
                 
-                const burnInstruction = splToken.createBurnInstruction(
+                // Try to find the correct SPL Token namespace
+                debug('Checking SPL token library...');
+                const splTokenLib = window.SplToken || solanaWeb3.SplToken;
+                if (!splTokenLib) {
+                    throw new Error('SPL Token library not found');
+                }
+                debug('Creating burn instruction...');
+                const burnInstruction = splTokenLib.createBurnInstruction(
                     tokenAccount,
                     mintAddress,
                     wallet,
