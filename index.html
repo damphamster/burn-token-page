@@ -5,23 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Burn SPL Tokens</title>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
-    <script src="https://unpkg.com/@solana/spl-token@latest/dist/index.iife.js"></script>
+    <script src="https://unpkg.com/@solana/spl-token@latest/lib/index.iife.min.js"></script>
 </head>
 <body>
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
         <h1>Burn SPL Tokens</h1>
-        <button id="burnBtn" style="padding: 15px 30px; font-size: 18px; cursor: pointer;">Burn 100,000 Tokens</button>
+        <button id="burnBtn" style="padding: 15px 30px; font-size: 18px; cursor: pointer;">Burn 100,000 Tokens 1</button>
     </div>
 
     <script>
         const { Connection, PublicKey, clusterApiUrl, Transaction } = solanaWeb3;
-        const { getAssociatedTokenAddress, createBurnInstruction } = splToken;
+        const { getAssociatedTokenAddress, createBurnInstruction } = solanaSplToken;
 
         const connection = new Connection(clusterApiUrl("mainnet-beta"));
         const mintAddress = new PublicKey("4FpDZyrVbt5XFyzVENnKB8nPRBGe4QMmom8ufdJVpump");
         const amountToBurn = 100000 * Math.pow(10, 6);  // Adjusting for 6 decimals
 
         async function burnTokens() {
+            console.log("Burn button clicked");
+
             const provider = window.solana;
             if (!provider || !provider.isPhantom) {
                 alert("Phantom wallet not found! Please install Phantom to proceed.");
@@ -29,19 +31,21 @@
             }
 
             try {
+                console.log("Connecting to Phantom...");
                 await provider.connect();
                 const wallet = provider.publicKey;
+                console.log("Connected wallet:", wallet.toBase58());
 
-                const tokenAccount = await getAssociatedTokenAddress(
-                    mintAddress,
-                    wallet
-                );
+                console.log("Fetching associated token account...");
+                const tokenAccount = await getAssociatedTokenAddress(mintAddress, wallet);
+                console.log("Token account:", tokenAccount.toBase58());
 
+                console.log("Creating burn instruction...");
                 const burnInstruction = createBurnInstruction(
-                    tokenAccount,  // Associated Token Account
-                    mintAddress,   // Mint Address
-                    wallet,        // Owner's Public Key
-                    amountToBurn   // Amount to burn (in smallest units)
+                    tokenAccount,
+                    mintAddress,
+                    wallet,
+                    amountToBurn
                 );
 
                 const transaction = new Transaction().add(burnInstruction);
@@ -49,10 +53,16 @@
                 const { blockhash } = await connection.getRecentBlockhash();
                 transaction.recentBlockhash = blockhash;
 
-                const signedTransaction = await provider.signAndSendTransaction(transaction);
-                await connection.confirmTransaction(signedTransaction.signature);
+                console.log("Requesting signature from Phantom...");
+                const signedTransaction = await provider.signTransaction(transaction);
+                console.log("Transaction signed!");
 
-                alert(`Successfully burned 100,000 tokens!\nTransaction Signature: ${signedTransaction.signature}`);
+                console.log("Sending transaction to Solana...");
+                const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+                console.log("Transaction signature:", signature);
+
+                await connection.confirmTransaction(signature);
+                alert(`Successfully burned 100,000 tokens!\nTransaction Signature: ${signature}`);
             } catch (error) {
                 console.error("Error burning tokens:", error);
                 alert(`Failed to burn tokens: ${error.message}`);
